@@ -1,1 +1,10 @@
-import configparser
+[DEFAULT]
+
+[reddit]
+client_id = put your client id here
+client_secret = put your client secret here
+user_agent = put your user agent here
+
+[neo4j]
+db = neo4j (or your graph name)
+pw = put your neo4j password here
