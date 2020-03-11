@@ -3,8 +3,13 @@
 # Social media platform extends
 
 import praw
+import configparser
 
 class Reddit:
+
+    cfg = configparser.ConfigParser()
+    cfg.read('/etc/290t-config.txt')
+    cfg = cfg['reddit']
 
     content_attrs = {
         "submission" : ["id", "title", "selftext", "url", "score", "upvote_ratio"],
@@ -15,9 +20,9 @@ class Reddit:
 
     def __init__(self):
         # Connect to Reddit
-        self.cnx = praw.Reddit(client_id='8bgMudNSu0bC6Q',
-                     client_secret='4evDbSmLfVBsuV6X8hoX8XHhaCA', # TODO: fix this
-                     user_agent='testscript by /u/catlady900')
+        self.cnx = praw.Reddit(client_id = self.cfg['client_id'],
+                     client_secret = self.cfg['client_secret'],
+                     user_agent = self.cfg['user_agent'])
 
     def _get_attr_dict(self, obj, atts):
         # Returns a dictionary of attributes of obj

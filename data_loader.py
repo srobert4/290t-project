@@ -3,13 +3,17 @@
 
 import py2neo as pn
 from scraper import Reddit
+import configparser
 
 class Data_Loader:
     # The data loader class is responsible for using a scraper to get data from
     # Reddit and adding it to the Neo4j database
+     cfg = configparser.ConfigParser()
+     cfg.read('/etc/290t-config.txt')
+     cfg = cfg['neo4j']
 
     def __init__(self):
-        self.graph = pn.Graph(auth=("neo4j", "paBa%Wp36^")) # TODO: fix this
+        self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
         self.subgraph = None
         self.scraper = Reddit()
 
