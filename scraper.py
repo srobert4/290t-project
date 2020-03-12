@@ -8,14 +8,18 @@ import configparser
 class Reddit:
 
     cfg = configparser.ConfigParser()
+    # ==============================
+    # If you move your config file:
+    # change the following line to its chosen location
+    # ==============================
     cfg.read('/etc/290t-config.txt')
     cfg = cfg['reddit']
 
     content_attrs = {
-        "submission" : ["id", "title", "selftext", "url", "score", "upvote_ratio"],
-        "author" : ["id","name","comment_karma","created","link_karma"],
-        "subreddit" : ["id", "display_name", "descr", "created", "subscribers"],
-        "comment" : ["id", 'text', "score", "url"]
+        "submission" : ["id", "title", "selftext", "url", "score", "upvote_ratio", "permalink", "created_utc"],
+        "author" : ["id","name","comment_karma","created_utc","link_karma"],
+        "subreddit" : ["id", "display_name", "public_description", "created_utc", "subscribers"],
+        "comment" : ["id", "body", "score", "permalink", "created_utc"]
     }
 
     def __init__(self):

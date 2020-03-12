@@ -8,9 +8,13 @@ import configparser
 class Data_Loader:
     # The data loader class is responsible for using a scraper to get data from
     # Reddit and adding it to the Neo4j database
-     cfg = configparser.ConfigParser()
-     cfg.read('/etc/290t-config.txt')
-     cfg = cfg['neo4j']
+    cfg = configparser.ConfigParser()
+    # ==============================
+    # If you move your config file:
+    # change the following line to its chosen location
+    # ==============================
+    cfg.read('/etc/290t-config.txt') 
+    cfg = cfg['neo4j']
 
     def __init__(self):
         self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
