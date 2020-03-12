@@ -14,7 +14,7 @@
 * Download neo4j desktop - add instructions for set up here
 
 ## Reddit API
-* Create a Reddit account and set up an app ([quick start instructions](https://github.com/reddit-archive/reddit/wiki/OAuth2-Quick-Start-Example#first-steps))
+* Create a Reddit account and set up an app following the [quick start instructions](https://github.com/reddit-archive/reddit/wiki/OAuth2-Quick-Start-Example#first-steps)
 
 ## Credentials
 * Copy neo4j and reddit credentials into config.txt and then move this file to /etc/ (or somewhere else, but then change data_loader.py and scraper.py to reflect this)
