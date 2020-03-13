@@ -13,7 +13,7 @@ class Data_Loader:
     # If you move your config file:
     # change the following line to its chosen location
     # ==============================
-    cfg.read('/etc/290t-config.txt') 
+    cfg.read('/etc/290t-config.txt')
     cfg = cfg['neo4j']
 
     def __init__(self):
@@ -21,12 +21,12 @@ class Data_Loader:
         self.subgraph = None
         self.scraper = Reddit()
 
-        # TODO: These probably should only be executed in the case that we're creating
-        # a new graph, which isn't necessarily the case.
-        self.graph.schema.create_uniqueness_constraint("User", "id")
-        self.graph.schema.create_uniqueness_constraint("Submission", "id")
-        self.graph.schema.create_uniqueness_constraint("Comment", "id")
-        self.graph.schema.create_uniqueness_constraint("Subreddit", "id")
+        # Only add uniqueness constraints once
+        if len(self.graph.schema.get_uniqueness_constraints("User")) == 0:
+            self.graph.schema.create_uniqueness_constraint("User", "id")
+            self.graph.schema.create_uniqueness_constraint("Submission", "id")
+            self.graph.schema.create_uniqueness_constraint("Comment", "id")
+            self.graph.schema.create_uniqueness_constraint("Subreddit", "id")
 
     def clear_graph(self):
         # delete all nodes in the graph
@@ -142,6 +142,8 @@ class Data_Loader:
         # time in the order returned by praw's submission.comments.replace_more()
         if comment is None:
             return
+        c = self.get_node("Comment", id = comment.id)
+        if c: return c
 
         if comment.author is not None:
             user = self.get_node("User", name = comment.author.name)
