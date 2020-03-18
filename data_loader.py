@@ -73,7 +73,7 @@ class Data_Loader:
         # If the submission already exists in the graph, do nothing.
 
         # If submission exists, return node
-        sb = self.get_node("Submission", id=submission.id)
+        sb = self.get_node("Submission", id = submission.id)
         if sb is not None:
             return sb
 
@@ -112,7 +112,7 @@ class Data_Loader:
         # If subreddit exists in remote graph: return corresponding Node
         # Else: add subreddit to local subgraph and return new Node
         if sr is None: return None
-        subreddit = self.get_node("Subreddit", id=sr.id)
+        subreddit = self.get_node("Subreddit", id = sr.id)
         if subreddit is not None:
             return subreddit
         subreddit = pn.Node("Subreddit", **self.scraper.get_attributes(sr, "Subreddit"))
