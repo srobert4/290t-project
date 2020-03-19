@@ -2,6 +2,7 @@
 # Loads data to graph
 
 import py2neo as pn
+from nodes import Submission, Subreddit, Comment, User
 from scraper import Reddit
 import configparser
 
@@ -32,31 +33,6 @@ class Data_Loader:
         # delete all nodes in the graph
         self.graph.delete_all()
 
-    def commit_subgraph(self):
-        # Commit the nodes currently in the subgraph to the remote graph
-        if self.subgraph is None:
-            return
-        txn = self.graph.begin()
-        txn.create(self.subgraph)
-        txn.commit()
-        self.subgraph = None
-
-    def add(self, node_or_relationship):
-        # add node or relationship to subgraph
-        if self.subgraph is None:
-            self.subgraph = node_or_relationship
-        else:
-            self.subgraph = self.subgraph | node_or_relationship
-
-    def get_node(self, node_type, **kwargs):
-        # check the remote graph for a node that has the given node_type and
-        # properties matching kwargs. If it exists, return the node, else
-        # return None
-        nodes = self.graph.nodes.match(node_type, **kwargs)
-        if len(nodes) > 0:
-            return nodes.first()
-        return None
-
     def load_submissions(self, submission_urls):
         # Given a list of Reddit submission urls, add all of the submissions
         # to the graph, including authors, subreddits and comments
@@ -64,8 +40,11 @@ class Data_Loader:
             sub = self.scraper.get_submission(submission)
             if sub is not None:
                 self.add_submission(sub)
+                # Add the comments to the subgraph
+                for comment in self.scraper.get_comments(sub):
+                    self.add_comment(comment)
 
-    def add_submission(self, submission):
+    def add_submission(self, sb):
         # submission: praw Submission object to add to remote graph
         # If submission is not already in the remote graph, add it along
         # with the author and subreddit if not already in the graph, as well
@@ -73,50 +52,37 @@ class Data_Loader:
         # If the submission already exists in the graph, do nothing.
 
         # If submission exists, return node
-        sb = self.get_node("Submission", id = submission.id)
-        if sb is not None:
-            return sb
-
-        # Add the subreddit if not already added to subgraph
-        subreddit = self.add_subreddit(
-            self.scraper.get_subreddit(source_content = submission)
-        )
-
-        # Add the author if not already added to subgraph
-        author = self.add_author(
-            self.scraper.get_author(source_content = submission)
-        )
+        submission = Submission.match(self.graph, sb.id).first()
+        if submission is not None:
+            return submission
 
         # Add the submission to subgraph
-        sb = pn.Node("Submission", **self.scraper.get_attributes(submission, "Submission"))
-        self.add(sb)
+        submission = Submission(sb)
 
-        # Connect submission to author and subreddit
-        if author is not None:
-            posted = pn.Relationship(author, "POSTED", sb)
-            self.add(posted)
+        # Add the subreddit if not already added to subgraph
+        if hasattr(sb, "subreddit") and sb.subreddit:
+            subreddit = self.add_subreddit(sb.subreddit)
+            submission.subreddit.add(subreddit)
 
-        posted_on = pn.Relationship(sb, "POSTED_ON", subreddit)
-        self.add(posted_on)
+        # Add the author if not already added to subgraph
+        if hasattr(sb, "author") and sb.author:
+            author = self.add_author(sb.author)
+            submission.author.add(author)
 
-        self.commit_subgraph()
-
-        # Add the comments to the subgraph
-        for comment in self.scraper.get_comments(submission):
-            c = self.add_comment(comment)
-
-        return sb
+        self.graph.push(submission)
+        return submission
 
     def add_subreddit(self, sr):
         # sr: praw Subreddit object
         # If subreddit exists in remote graph: return corresponding Node
         # Else: add subreddit to local subgraph and return new Node
         if sr is None: return None
-        subreddit = self.get_node("Subreddit", id = sr.id)
+        subreddit = Subreddit.match(self.graph, sr.id).first()
         if subreddit is not None:
             return subreddit
-        subreddit = pn.Node("Subreddit", **self.scraper.get_attributes(sr, "Subreddit"))
-        self.add(subreddit)
+
+        subreddit = Subreddit(sr)
+        self.graph.push(subreddit)
         return subreddit
 
     def add_author(self, author):
@@ -124,13 +90,14 @@ class Data_Loader:
         # If user exists in remote graph: return corresponding Node
         # Else: add user to local subgraph and return new Node
         if author is None: return None
-        user = self.get_node("User", name = author.name)
+        user = User.match(self.graph, author.name).first()
         if user: return user
-        user = pn.Node("User", **self.scraper.get_attributes(author, "author"))
-        self.add(user)
+
+        user = User(author)
+        self.graph.push(user)
         return user
 
-    def add_comment(self, comment):
+    def add_comment(self, c):
         # comment: praw comment object to add to remote graph
         # If comment is not already in the remote graph, add it along
         # with the author if not already in the graph and connect it to author
@@ -140,27 +107,28 @@ class Data_Loader:
         # already added to the remote graph. This will be the case if the
         # submission is added first and then the comments are added one at a
         # time in the order returned by praw's submission.comments.replace_more()
-        if comment is None:
+        if c is None:
             return
-        c = self.get_node("Comment", id = comment.id)
-        if c: return c
+        comment = Comment.match(self.graph, c.id).first()
+        if comment: return comment
 
-        if comment.author is not None:
-            user = self.get_node("User", name = comment.author.name)
+        comment = Comment(c)
+        self.graph.push(comment)
+
+        if hasattr(c, "author") and c.author:
+            user = User.match(self.graph, c.author.name).first()
             if user is None:
-                user = self.add_author(comment.author)
+                user = self.add_author(c.author)
+            user.comments.add(comment)
+            self.graph.push(user)
 
-        parent_type = "Submission" if comment.is_root else "Comment"
-        parent = self.get_node(parent_type, id = comment.parent_id[3:])
+        if hasattr(c, "parent_id") and c.parent_id:
+            if c.is_root:
+                parent = Submission.match(self.graph, c.parent_id[3:]).first()
+                parent.comments.add(comment)
+            else:
+                parent = Comment.match(self.graph, c.parent_id[3:]).first()
+                parent.replies.add(comment)
+            self.graph.push(parent)
 
-        c = pn.Node("Comment", **self.scraper.get_attributes(comment, "Comment"))
-        self.add(c)
-        if comment.author is not None:
-            posted = pn.Relationship(user, "POSTED", c)
-            self.add(posted)
-        if parent is not None:
-            posted_on = pn.Relationship(c, "REPLY_TO", parent)
-            self.add(posted_on)
-
-        self.commit_subgraph()
-        return c
+        return comment
