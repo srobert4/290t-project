@@ -40,9 +40,64 @@ class Data_Loader:
             sub = self.scraper.get_submission(submission)
             if sub is not None:
                 self.add_submission(sub)
-                # Add the comments to the subgraph
-                for comment in self.scraper.get_comments(sub):
-                    self.add_comment(comment)
+
+    def load_from_comment(self, comment_urls):
+        for url in comment_urls:
+            submission = self.scraper.get_comment_submission(url)
+            if submission is not None:
+                self.add_submission(submission)
+
+    def load_by_subreddit(self, subreddit_name,
+                        time_filter = None, n_popular = None,
+                        n_recent = None, n_sample = None,
+                        controversial = None):
+        self._load_by_subreddit_or_user(
+            subreddit_name = subreddit_name, time_filter = time_filter, n_popular = n_popular,
+            n_recent = n_recent, n_sample = n_sample, controversial = controversial
+        )
+
+    def load_by_user(self, user_name,
+                    time_filter = None, n_popular = None,
+                    n_recent = None,n_sample = None,
+                    controversial = None):
+        self._load_by_subreddit_or_user(
+            user_name = user_name, time_filter = time_filter,
+            n_popular = n_popular, n_recent = n_recent,
+            n_sample = n_sample, controversial = controversial)
+
+    def _load_by_subreddit_or_user(self, subreddit_name = None, user_name = None,
+        time_filter = None, n_popular = None, n_recent = None,
+        n_sample = None, controversial = None, search_query = None, search_limit = 1):
+        if subreddit_name:
+            obj = self.scraper.get_subreddit(subreddit_name = subreddit_name)
+        else if user_name:
+            obj = self.scraper.get_redditor(name = user_name)
+        else:
+            return
+
+        if time_filter:
+            submissions = obj.top(time_filter = time_filter)
+        else if n_popular:
+            submissions = obj.hot(limit = n_popular)
+        else if n_recent:
+            submissions = obj.new(limit = n_recent)
+        else if n_sample:
+            submissions = obj.random(limit = n_sample)
+        else if controversial:
+            submissions = obj.controversial(time_filter = controversial)
+        else if search_query:
+            if time_filter is None:
+                time_filter = "all"
+            submissions = obj.search(query = search_query, time_filter = time_filter)
+        else:
+            return
+
+        n_added = 0
+        for submission in submissions:
+            self.add_submission(submission)
+            n_added = n_added + 1
+            if search_limit == n_added:
+                return
 
     def add_submission(self, sb):
         # submission: praw Submission object to add to remote graph
@@ -70,6 +125,11 @@ class Data_Loader:
             submission.author.add(author)
 
         self.graph.push(submission)
+
+        # Add the comments to the subgraph
+        for comment in self.scraper.get_comments(sb):
+            self.add_comment(comment)
+
         return submission
 
     def add_subreddit(self, sr):

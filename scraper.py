@@ -30,18 +30,29 @@ class Reddit:
 
         return None
 
-    def get_submission(self, submission_url):
+    def get_submission(self, id = None, submission_url = None):
+        # If both id and url provided, use id
+        if id: return self.cnx.submission(id = id)
         return self.cnx.submission(url = submission_url)
+
+    def get_comment_submission(self, id = None, comment_url = None):
+        if id:
+            c = self.cnx.comment(id = id)
+        else:
+            c = self.cnx.comment(url = comment_urls)
+        if hasattr(c, "submission"):
+            return c.submission
+        return None
 
     def get_comments(self, submission):
         submission.comments.replace_more(limit = None)
         return submission.comments.list()
 
-    def get_author(self, author_name = None, source_content = None):
+    def get_redditor(self, name = None, source_content = None):
         if source_content is not None:
             return source_content.author
 
-        if author_name is not None:
-            return self.cnx.redditor(author_name)
+        if name is not None:
+            return self.cnx.redditor(name = name)
 
         return None
