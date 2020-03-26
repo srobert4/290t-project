@@ -124,3 +124,8 @@ class Code(GraphObject):
     subcodes = RelatedFrom("Code", "SUBCODE_OF")
     comment_excerpts = RelatedTo("Comment", "CODED")
     submission_excerpts = RelatedTo("Submission", "CODED")
+
+    def __init__(self, code, description = None):
+        super().__init__()
+        self.code = code
+        self.description = description
