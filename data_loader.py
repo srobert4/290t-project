@@ -5,6 +5,7 @@ import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User
 from scraper import Reddit
 import configparser
+import time
 
 class Data_Loader:
     # The data loader class is responsible for using a scraper to get data from
@@ -43,52 +44,63 @@ class Data_Loader:
 
     def load_from_comment(self, comment_urls):
         for url in comment_urls:
-            submission = self.scraper.get_comment_submission(url)
+            submission = self.scraper.get_comment_submission(comment_url = url)
             if submission is not None:
                 self.add_submission(submission)
 
     def load_by_subreddit(self, subreddit_name,
                         time_filter = None, n_popular = None,
                         n_recent = None, n_sample = None,
-                        controversial = None):
+                        controversial = None, search_query = None, search_limit = 1):
         self._load_by_subreddit_or_user(
             subreddit_name = subreddit_name, time_filter = time_filter, n_popular = n_popular,
-            n_recent = n_recent, n_sample = n_sample, controversial = controversial
+            n_recent = n_recent, n_sample = n_sample, controversial = controversial,
+            search_query = search_query, search_limit = search_limit
         )
 
     def load_by_user(self, user_name,
                     time_filter = None, n_popular = None,
                     n_recent = None,n_sample = None,
-                    controversial = None):
+                    controversial = None, search_query = None, search_limit = 1):
         self._load_by_subreddit_or_user(
             user_name = user_name, time_filter = time_filter,
             n_popular = n_popular, n_recent = n_recent,
-            n_sample = n_sample, controversial = controversial)
+            n_sample = n_sample, controversial = controversial,
+            search_query = search_query, search_limit = search_limit
+        )
+
+    def load_by_user_and_subreddit(self, user_name, subreddit_name, submissions = True, comments = True,
+                sort = "top", time_filter = "all", limit = 100):
+        user_subs = self.scraper.get_user_subs(user_name, subreddit_name, submissions, comments,
+            sort, time_filter, limit)
+
+        for submission in user_subs:
+            self.add_submission(submission)
 
     def _load_by_subreddit_or_user(self, subreddit_name = None, user_name = None,
         time_filter = None, n_popular = None, n_recent = None,
         n_sample = None, controversial = None, search_query = None, search_limit = 1):
         if subreddit_name:
             obj = self.scraper.get_subreddit(subreddit_name = subreddit_name)
-        else if user_name:
+        elif user_name:
             obj = self.scraper.get_redditor(name = user_name)
         else:
             return
 
-        if time_filter:
-            submissions = obj.top(time_filter = time_filter)
-        else if n_popular:
-            submissions = obj.hot(limit = n_popular)
-        else if n_recent:
-            submissions = obj.new(limit = n_recent)
-        else if n_sample:
-            submissions = obj.random(limit = n_sample)
-        else if controversial:
-            submissions = obj.controversial(time_filter = controversial)
-        else if search_query:
+        if search_query:
             if time_filter is None:
                 time_filter = "all"
             submissions = obj.search(query = search_query, time_filter = time_filter)
+        elif time_filter:
+            submissions = obj.top(time_filter = time_filter)
+        elif n_popular:
+            submissions = obj.hot(limit = n_popular)
+        elif n_recent:
+            submissions = obj.new(limit = n_recent)
+        elif n_sample:
+            submissions = obj.random(limit = n_sample)
+        elif controversial:
+            submissions = obj.controversial(time_filter = controversial)
         else:
             return
 
@@ -96,7 +108,7 @@ class Data_Loader:
         for submission in submissions:
             self.add_submission(submission)
             n_added = n_added + 1
-            if search_limit == n_added:
+            if search_query and search_limit == n_added:
                 return
 
     def add_submission(self, sb):
@@ -113,6 +125,8 @@ class Data_Loader:
 
         # Add the submission to subgraph
         submission = Submission(sb)
+        if submission.id == -1:
+            return None
 
         # Add the subreddit if not already added to subgraph
         if hasattr(sb, "subreddit") and sb.subreddit:
@@ -142,8 +156,10 @@ class Data_Loader:
             return subreddit
 
         subreddit = Subreddit(sr)
-        self.graph.push(subreddit)
-        return subreddit
+        if subreddit.id != -1:
+            self.graph.push(subreddit)
+            return subreddit
+        return None
 
     def add_author(self, author):
         # author: praw Redditor object
@@ -154,8 +170,10 @@ class Data_Loader:
         if user: return user
 
         user = User(author)
-        self.graph.push(user)
-        return user
+        if user.id != -1:
+            self.graph.push(user)
+            return user
+        return None
 
     def add_comment(self, c):
         # comment: praw comment object to add to remote graph
@@ -173,14 +191,16 @@ class Data_Loader:
         if comment: return comment
 
         comment = Comment(c)
-        self.graph.push(comment)
+        if comment.id != -1:
+            self.graph.push(comment)
 
         if hasattr(c, "author") and c.author:
             user = User.match(self.graph, c.author.name).first()
             if user is None:
                 user = self.add_author(c.author)
-            user.comments.add(comment)
-            self.graph.push(user)
+            if user.id != -1:
+                user.comments.add(comment)
+                self.graph.push(user)
 
         if hasattr(c, "parent_id") and c.parent_id:
             if c.is_root:

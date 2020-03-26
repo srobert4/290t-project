@@ -15,11 +15,17 @@ class Subreddit(GraphObject):
 
     def __init__(self, sr):
         super().__init__()
-        if hasattr(sr, "id"): self.id = sr.id
-        if hasattr(sr, "display_name"): self.name = sr.display_name
-        if hasattr(sr, "public_description"): self.description = sr.public_description
-        if hasattr(sr, "created_utc"): self.created_time = sr.created_utc
-        if hasattr(sr, "subscribers"): self.num_subscribers = sr.subscribers
+        try:
+            self.id = sr.id
+        except:
+            self.id = -1
+            return
+        attrs = dict(vars(sr))
+        self.id = attrs.get("id", None)
+        self.name = attrs.get("display_name", None)
+        self.description = attrs.get("public_description", None)
+        self.num_subscribers = attrs.get("subscribers", None)
+        self.created_time = attrs.get("created_utc", None)
 
 class Submission(GraphObject):
     __primarykey__ = "id"
@@ -39,14 +45,21 @@ class Submission(GraphObject):
 
     def __init__(self, sb):
         super().__init__()
-        if hasattr(sb, "id"): self.id = sb.id
-        if hasattr(sb, "title"): self.name = sb.title
-        if hasattr(sb, "url"): self.num_subscribers = sb.url
-        if hasattr(sb, "selftext"): self.description = sb.selftext
-        if hasattr(sb, "score"): self.score = sb.score
-        if hasattr(sb,"upvote_ratio"): self.upvote_ratio = sb.upvote_ratio
-        if hasattr(sb, "permalink"): self.link = sb.permalink
-        if hasattr(sb, "created_utc"): self.created_time = sb.created_utc
+        try:
+            self.id = sb.id
+        except:
+            self.id = -1
+            return
+        attrs = dict(vars(sb))
+        self.id = attrs.get("id", -1)
+        self.title = attrs.get("title", None)
+        self.url = attrs.get("url", None)
+        self.text = attrs.get("selftext", None)
+        self.score = attrs.get("score", None)
+        self.upvote_ratio = attrs.get("upvote_ratio", None)
+        self.link = attrs.get("permalink", None)
+        self.created_time = attrs.get("created_utc", None)
+
 
 class Comment(GraphObject):
     __primarykey__ = "id"
@@ -64,11 +77,17 @@ class Comment(GraphObject):
 
     def __init__(self, c):
         super().__init__()
-        if hasattr(c, "id"): self.id = c.id
-        if hasattr(c, "body"): self.text = c.body
-        if hasattr(c, "score"): self.score = c.score
-        if hasattr(c, "permalink"): self.link = c.permalink
-        if hasattr(c, "created_utc"): self.creqated_time = c.created_utc
+        try:
+            self.id = c.id
+        except:
+            self.id = -1
+            return
+        attrs = dict(vars(c))
+        self.id = attrs.get("id", -1)
+        self.text = attrs.get("body", None)
+        self.score = attrs.get("score", None)
+        self.link = attrs.get("permalink", None)
+        self.created_time = attrs.get("created_utc", None)
 
 class User(GraphObject):
     __primarykey__ = "name"
@@ -84,8 +103,24 @@ class User(GraphObject):
 
     def __init__(self, author):
         super().__init__()
-        if hasattr(author, "id"): self.id = author.id
-        if hasattr(author, "name"): self.name = author.name
-        if hasattr(author, "comment_karma"): self.comment_karma = author.comment_karma
-        if hasattr(author, "link_karma"): self.link_karma = author.link_karma
-        if hasattr(author, "created_utc"): self.created_time = author.created_utc
+        try:
+            self.id = author.id
+        except:
+            self.id = -1
+            return
+        attrs = dict(vars(author))
+        self.id = attrs.get("id", -1)
+        self.name = attrs.get("name", None)
+        self.comment_karma = attrs.get("comment_karma", None)
+        self.link_karma = attrs.get("link_karma", None)
+        self.created_time = attrs.get("created_utc", None)
+
+class Code(GraphObject):
+    __primarykey__ = "code"
+
+    code = Property()
+    description = Property()
+
+    subcodes = RelatedFrom("Code", "SUBCODE_OF")
+    comment_excerpts = RelatedTo("Comment", "CODED")
+    submission_excerpts = RelatedTo("Submission", "CODED")

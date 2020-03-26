@@ -4,6 +4,7 @@
 
 import praw
 import configparser
+import time
 
 class Reddit:
 
@@ -35,11 +36,36 @@ class Reddit:
         if id: return self.cnx.submission(id = id)
         return self.cnx.submission(url = submission_url)
 
+    def get_user_subs(self, user, subreddit = None, submissions = True, comments = True,
+            sort = "top", time_filter = "all", limit = 100):
+        subs = self.cnx.redditor(name = user).submissions
+        comments = self.cnx.redditor(name = user).comments
+
+        if sort == "hot":
+            subs = subs.hot(limit = limit)
+            comments = comments.hot(limit = limit)
+        elif sort == "new":
+            subs = subs.new(limit = limit)
+            comments = comments.new(limit = limit)
+        elif sort == "top":
+            subs = subs.top(time_filter, limit = limit)
+            comments = comments.top(time_filter, limit = limit)
+
+        s = set()
+        if submissions:
+            s = s.union({sub for sub in subs})
+        if comments:
+            s = s.union({c.submission for c in comments})
+        if subreddit:
+            s = [sub for sub in s if sub.subreddit.display_name == subreddit]
+
+        return list(s)
+
     def get_comment_submission(self, id = None, comment_url = None):
         if id:
             c = self.cnx.comment(id = id)
         else:
-            c = self.cnx.comment(url = comment_urls)
+            c = self.cnx.comment(url = comment_url)
         if hasattr(c, "submission"):
             return c.submission
         return None
@@ -53,6 +79,8 @@ class Reddit:
             return source_content.author
 
         if name is not None:
-            return self.cnx.redditor(name = name)
+            redditor = self.cnx.redditor(name = name)
+            if not redditor.is_suspended:
+                return redditor
 
         return None
