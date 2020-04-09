@@ -6,6 +6,7 @@ from nodes import Submission, Subreddit, Comment, User
 from scraper import Reddit
 import configparser
 import time
+import logging
 
 class Data_Loader:
     # The data loader class is responsible for using a scraper to get data from
@@ -17,14 +18,17 @@ class Data_Loader:
     # ==============================
     cfg.read('/etc/290t-config.txt')
     cfg = cfg['neo4j']
+    logging.basicConfig(filename='data_loader.log', level=logging.INFO)
 
     def __init__(self):
         self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
+        logging.info("Successfully connected to Graph")
         self.subgraph = None
         self.scraper = Reddit()
 
         # Only add uniqueness constraints once
         if len(self.graph.schema.get_uniqueness_constraints("User")) == 0:
+            logging.info("Adding uniqueness constraints to graph")
             self.graph.schema.create_uniqueness_constraint("User", "id")
             self.graph.schema.create_uniqueness_constraint("Submission", "id")
             self.graph.schema.create_uniqueness_constraint("Comment", "id")
@@ -38,9 +42,10 @@ class Data_Loader:
         # Given a list of Reddit submission urls, add all of the submissions
         # to the graph, including authors, subreddits and comments
         for submission in submission_urls:
-            sub = self.scraper.get_submission(submission)
+            print(f"Adding submission: {submission}")
+            sub = self.scraper.get_submission(submission_url = submission)
             if sub is not None:
-                self.add_submission(sub)
+                s = self.add_submission(sub)
 
     def load_from_comment(self, comment_urls):
         for url in comment_urls:
@@ -119,31 +124,42 @@ class Data_Loader:
         # If the submission already exists in the graph, do nothing.
 
         # If submission exists, return node
+        logging.info(f"Adding submission ({sb.id}): {sb.permalink}")
+        tic = time.perf_counter()
         submission = Submission.match(self.graph, sb.id).first()
         if submission is not None:
+            toc = time.perf_counter()
+            print("Submission already in graph")
+            logging.info("Submission already in graph")
             return submission
 
         # Add the submission to subgraph
+        fetch = sb.title # fetch non-Lazy version
         submission = Submission(sb)
         if submission.id == -1:
+            logging.info("Bad submission added to the graph")
             return None
 
         # Add the subreddit if not already added to subgraph
-        if hasattr(sb, "subreddit") and sb.subreddit:
+        attrs = dict(vars(sb))
+        if attrs.get("subreddit", False) and sb.subreddit:
             subreddit = self.add_subreddit(sb.subreddit)
             submission.subreddit.add(subreddit)
 
         # Add the author if not already added to subgraph
-        if hasattr(sb, "author") and sb.author:
+        if attrs.get("author", False) and sb.author:
             author = self.add_author(sb.author)
             submission.author.add(author)
 
         self.graph.push(submission)
 
         # Add the comments to the subgraph
-        for comment in self.scraper.get_comments(sb):
+        comments =  self.scraper.get_comments(sb)
+        logging.info(f"Adding {len(comments)} comments...")
+        for comment in comments:
             self.add_comment(comment)
-
+        toc = time.perf_counter()
+        print(f"Submission {submission.id} and {len(comments)} comments added in {toc - tic:0.4f}s")
         return submission
 
     def add_subreddit(self, sr):
@@ -153,8 +169,11 @@ class Data_Loader:
         if sr is None: return None
         subreddit = Subreddit.match(self.graph, sr.id).first()
         if subreddit is not None:
+            logging.info(f"Subreddit {subreddit.name} already in graph")
             return subreddit
 
+        fetch = sr.display_name # non-Lazy version
+        logging.info(f"Adding subreddit: r/{fetch}")
         subreddit = Subreddit(sr)
         if subreddit.id != -1:
             self.graph.push(subreddit)
@@ -167,8 +186,11 @@ class Data_Loader:
         # Else: add user to local subgraph and return new Node
         if author is None: return None
         user = User.match(self.graph, author.name).first()
-        if user: return user
+        if user:
+            logging.info(f"User {user.name} already in graph")
+            return user
 
+        logging.info(f"Adding user: {author.name}")
         user = User(author)
         if user.id != -1:
             self.graph.push(user)
@@ -188,13 +210,19 @@ class Data_Loader:
         if c is None:
             return
         comment = Comment.match(self.graph, c.id).first()
-        if comment: return comment
+        if comment:
+            logging.info(f"Comment ({comment.id}) already in graph")
+            return comment
 
+        fetch = c.body # Non-lazy version
         comment = Comment(c)
         if comment.id != -1:
             self.graph.push(comment)
 
-        if hasattr(c, "author") and c.author:
+
+        attrs = dict(vars(c))
+        # Add the author if not already added to subgraph
+        if attrs.get("author", False) and c.author:
             user = User.match(self.graph, c.author.name).first()
             if user is None:
                 user = self.add_author(c.author)
@@ -202,7 +230,7 @@ class Data_Loader:
                 user.comments.add(comment)
                 self.graph.push(user)
 
-        if hasattr(c, "parent_id") and c.parent_id:
+        if attrs.get("parent_id", False) and c.parent_id:
             if c.is_root:
                 parent = Submission.match(self.graph, c.parent_id[3:]).first()
                 parent.comments.add(comment)

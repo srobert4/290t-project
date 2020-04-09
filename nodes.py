@@ -65,12 +65,10 @@ class Submission(GraphObject):
         self.created_time = attrs.get("created_utc", None)
 
     def __str__(self):
-        if self.title:
-            title = self.title
-        else:
-            title = self.url
         author = [a for a in self.author][0].name
-        return f"[Submission {self.id}]\n {author}: {title} \n {self.text}"
+        if self.url:
+            return f"[Submission {self.id}]\n {author}: {self.title} ({self.url}) \n {self.text}"
+        return f"[Submission {self.id}]\n {author}: {self.title} \n {self.text}"
 
 
 class Comment(GraphObject):
@@ -81,6 +79,7 @@ class Comment(GraphObject):
     score = Property()
     link = Property()
     created_time = Property()
+    top_level = Property()
 
     parent_submission = RelatedTo("Submission", "REPLY_TO")
     parent_comment = RelatedTo("Comment", "REPLY_TO")
@@ -113,7 +112,7 @@ class Comment(GraphObject):
 
         author = [a for a in self.author][0].name
 
-        return f"[Comment {self.id} -> {ptype} {parent.id}]\n {author}: self.text"
+        return f"[Comment {self.id} -> {ptype} {parent.id}] {author}: {self.text}"
 
 class User(GraphObject):
     __primarykey__ = "name"

@@ -21,7 +21,17 @@ class Data_Viewer:
     def view_submission(self, submission_id, include_comments = False):
         # Query graph for a submission and display with all comments / replies
         submission = Submission.match(self.graph, submission_id).first()
-        return str(submission)
+        if not include_comments:
+            return str(submission)
+
+        content = [str(submission)] + [self._view_comment(comment) for comment in submission.comments]
+        return "\n\n".join(content)
+
+    def _view_comment(self, comment):
+        content = [str(comment)]
+        for reply in comment.replies:
+            content.append(self._view_comment(reply))
+        return "\n\n".join(content)
 
     def view_user(self, user_name):
         # Query graph for all content created by a user
