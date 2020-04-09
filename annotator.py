@@ -3,13 +3,10 @@
 
 import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User, Code
-from scraper import Reddit
 import configparser
-import time
 
 class Annotator:
-    # The data loader class is responsible for using a scraper to get data from
-    # Reddit and adding it to the Neo4j database
+    # The annotator class is responsible for adding annotations to content
     cfg = configparser.ConfigParser()
     # ==============================
     # If you move your config file:
@@ -40,12 +37,13 @@ class Annotator:
         # output: list of lists. for each list: ordered from highest level to lowest level code
         codes = code.split(";")
         return [c.strip().split(":") for c in codes]
-        
+
     def get_code(self, code_label):
         return Code.match(self.graph, code_label).first()
 
     def add_codes(self, code_levels, content_node, content):
-        self.add_code(code_levels.pop(0), code_levels, content_node, content)
+        code = self.add_code(code_levels.pop(0), code_levels, content_node, content)
+        self.graph.push(code)
 
     def add_code(self, code_label, children, content_node, content):
         code = self.get_code(code_label)
@@ -56,9 +54,9 @@ class Annotator:
             self.add_content(code, content_node, content)
         else:
             child = self.add_code(children.pop(0), children, content_node, content)
-            code.subcodes.add(child)
+            child.parent_code.add(code)
+            self.graph.push(child)
 
-        self.graph.push(code)
         return code
 
     def add_content(self, code, content_node, content):
