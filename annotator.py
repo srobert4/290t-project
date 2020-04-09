@@ -21,19 +21,26 @@ class Annotator:
     def __init__(self):
         self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
 
+    def annotate(self, code, content_id, content_type, content):
+        # code: an annotation in the format code1: subcode; code2: subcode
+        # content_id: the Reddit id of the content node
+        # content_type: Comment or Submission
+        # content: the substring of the content to be annotated
+        if content_type == "Submission":
+            content_node = Submission.match(self.graph, content_id).first()
+        else:
+            content_node = Comment.match(self.graph, content_id).first()
+
+        codes = self.parse_code(code)
+        for code_levels in codes:
+            self.add_codes(code_levels, content_node, content)
+
     def parse_code(self, code):
         # input: code1: subcode1; code2: subcode2
         # output: list of lists. for each list: ordered from highest level to lowest level code
         codes = code.split(";")
         return [c.strip().split(":") for c in codes]
-
-
-    def annotate(self, code, content_node, content):
-        # take a code1: subcode1: subcode2; code2: subcode3 and return code nodes
-        codes = self.parse_code(code)
-        for code_levels in codes:
-            self.add_codes(code_levels, content_node, content)
-
+        
     def get_code(self, code_label):
         return Code.match(self.graph, code_label).first()
 
