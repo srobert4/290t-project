@@ -44,7 +44,7 @@ class Submission(GraphObject):
 
     subreddit = RelatedTo("Subreddit", "POSTED_ON")
     author = RelatedFrom("User", "POSTED")
-    comments = RelatedFrom("Comment", "REPLY_TO")
+    comments = RelatedFrom("Comment", "COMMENT_ON")
     codes = RelatedFrom("Code", "CODED")
 
     def __init__(self, sb):
@@ -79,11 +79,12 @@ class Comment(GraphObject):
     score = Property()
     link = Property()
     created_time = Property()
+    submission = Property()
     top_level = Property()
 
-    parent_submission = RelatedTo("Submission", "REPLY_TO")
+    parent_submission = RelatedTo("Submission", "COMMENT_ON")
     parent_comment = RelatedTo("Comment", "REPLY_TO")
-    author = RelatedFrom("User", "POSTED")
+    author = RelatedFrom("User", "COMMENTED")
     replies = RelatedFrom("Comment", "REPLY_TO")
     codes = RelatedFrom("Code", "CODED")
 
@@ -100,19 +101,24 @@ class Comment(GraphObject):
         self.score = attrs.get("score", None)
         self.link = attrs.get("permalink", None)
         self.created_time = attrs.get("created_utc", None)
+        self.submission = attrs.get("link_id", None)
+        if self.submission:
+            self.submission = self.submission[3:]
         self.top_level = attrs.get("link_id") == attrs.get("parent_id")
 
     def __str__(self):
+        author = [a for a in self.author][0].name
+
         if self.top_level:
             ptype = "Submission"
             parent = [p for p in self.parent_submission][0]
-        else:
-            ptype = "Comment"
-            parent = [p for p in self.parent_comment][0]
+            return f"[Comment {self.id} -> {ptype} {parent.id}] {author}: {self.text}"
 
-        author = [a for a in self.author][0].name
+        ptype = "Comment"
+        parent = [p for p in self.parent_comment][0]
+        return f"[Comment {self.id} -> {ptype} {parent.id} | Submission {self.submission}]\n{author}: {self.text}"
 
-        return f"[Comment {self.id} -> {ptype} {parent.id}] {author}: {self.text}"
+
 
 class User(GraphObject):
     __primarykey__ = "name"
@@ -124,7 +130,7 @@ class User(GraphObject):
     link_karma = Property()
 
     submissions = RelatedTo("Submission", "POSTED")
-    comments = RelatedTo("Comment", "POSTED")
+    comments = RelatedTo("Comment", "COMMENTED")
 
     def __init__(self, author):
         super().__init__()
@@ -150,7 +156,8 @@ class Code(GraphObject):
     description = Property()
 
     parent_code = RelatedFrom("Code", "SUBCODE")
-    comment_excerpts = RelatedTo("Comment", "CODED")
+    child_codes = RelatedTo("Code", "SUBCODE")
+    excerpts = RelatedTo("Comment", "CODED")
     submission_excerpts = RelatedTo("Submission", "CODED")
 
     def __init__(self, code, description = None):
@@ -159,5 +166,11 @@ class Code(GraphObject):
         self.description = description
 
     def __str__(self):
-        parent = [p for p in parent_code][0]
-        return f"{parent}: {self.code} - {self.description}"
+        parent = [p for p in self.parent_code]
+        result = ""
+        if len(parent) > 0:
+            result += f"{str(parent[0])}: "
+        result += self.code
+        if self.description:
+            result += f" - {self.description}"
+        return result
