@@ -14,21 +14,24 @@ class Code_Viewer:
         self.node_matcher = pn.NodeMatcher(self.graph)
 
 
-    def view_coded(self, code_label):
+    def get_code_table(self):
+        # Returns a pandas dataframe containing all of the codes with count
         raise NotImplementedError
-        # View all content coded with a given code. The code label should be the label
-        # of the leaf node
-        # code = Code.match(self.graph, code_label).first()
-        # if not code:
-        #     print("Code not found")
-        #     return
-        #
-        # content = []
-        # for content_node in code.excerpts:
-        #     highlight = code.excerpts.get(content_node, "text")
-        #     content += [colored(highlight, "yellow").join(str(content_node).split(highlight))]
-        #
-        # return self._construct_result_string(
-        #     f"Content with code: {code_label}",
-        #     content
-        # )
+        # get all leaf code nodes
+        # for each node count the number of children
+        # convert to string
+        # columns: full_code, top_level, bottom_level, description, count
+
+    def get_top_words(self, code_label, n = 10):
+        # Returns dataframe of most common words coded with the given code
+        # code_label: code to find top words of
+        # n: number of top words to return
+        # Returns: DataFrame(word, count)
+        raise NotImplementedError
+
+    def get_similar_codes(self, code_label, n = 1):
+        # Returns list of most similar codes to the given code label, ordered by similarity
+        # code_label: code to find similar codes to
+        # n: number of similar codes to return
+        # Returns: ordered list of code labels
+        raise NotImplementedError
