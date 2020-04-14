@@ -3,7 +3,7 @@
 
 import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User, Code
-from termcolor import colored
+import pandas as pd
 
 class Code_Viewer:
     # The data viewer class allows the user to query the database and display results
@@ -15,12 +15,12 @@ class Code_Viewer:
 
 
     def get_code_table(self):
-        # Returns a pandas dataframe containing all of the codes with count
-        raise NotImplementedError
-        # get all leaf code nodes
-        # for each node count the number of children
-        # convert to string
-        # columns: full_code, top_level, bottom_level, description, count
+        # Returns a pandas dataframe containing all of the leaf codes with count
+        return self.graph.run(
+            "MATCH (c:Code)-[r:CODED]->(content) RETURN c.code, c.description, count(r)"
+        ).to_data_frame().rename(
+            columns = {"c.code" : "code", "c.description" : "description", "count(r)" : "count"}
+        )
 
     def get_top_words(self, code_label, n = 10):
         # Returns dataframe of most common words coded with the given code
@@ -35,3 +35,16 @@ class Code_Viewer:
         # n: number of similar codes to return
         # Returns: ordered list of code labels
         raise NotImplementedError
+
+    def get_code_hierarchy(self):
+        codes = Code.match(self.graph)
+        labels = {
+            'code' : [],
+            'parent_codes' : []
+        }
+        for code in codes:
+            if len(code.excerpts) > 0:
+                labels['code'].append(code.code)
+                labels['parent_codes'].append(str(code))
+
+        return pd.DataFrame(data = labels)
