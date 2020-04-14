@@ -25,8 +25,8 @@
 * Create a Reddit account and set up an app following the [quick start instructions](https://github.com/reddit-archive/reddit/wiki/OAuth2-Quick-Start-Example#first-steps)
 
 ## Credentials
-* Copy neo4j and reddit credentials into config.txt and then move this file to /etc/ (or somewhere else, but then change data_loader.py and scraper.py to reflect this)
-* Neo4j graph server needs to be running in order to use the data_loader module.
+* Copy neo4j and reddit credentials into config.txt and then move this file to /etc/ (or somewhere else, but then change graph.py and scraper.py to reflect this)
+* Neo4j graph server needs to be running in order to add and query data.
 
 # Getting Started
 

@@ -3,22 +3,14 @@
 
 import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User, Code
-import configparser
 import logging
 
 class Annotator:
     # The annotator class is responsible for adding annotations to content
-    cfg = configparser.ConfigParser()
-    # ==============================
-    # If you move your config file:
-    # change the following line to its chosen location
-    # ==============================
-    cfg.read('/etc/290t-config.txt')
-    cfg = cfg['neo4j']
     logging.basicConfig(filename='annotator.log', level=logging.INFO)
 
-    def __init__(self):
-        self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
+    def __init__(self, graph):
+        self.graph = graph
         self.rship_matcher = pn.RelationshipMatcher(self.graph)
         self.node_matcher = pn.NodeMatcher(self.graph)
 

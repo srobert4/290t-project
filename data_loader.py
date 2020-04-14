@@ -4,25 +4,16 @@
 import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User
 from scraper import Reddit
-import configparser
 import time
 import logging
 
 class Data_Loader:
     # The data loader class is responsible for using a scraper to get data from
     # Reddit and adding it to the Neo4j database
-    cfg = configparser.ConfigParser()
-    # ==============================
-    # If you move your config file:
-    # change the following line to its chosen location
-    # ==============================
-    cfg.read('/etc/290t-config.txt')
-    cfg = cfg['neo4j']
     logging.basicConfig(filename='data_loader.log', level=logging.INFO)
 
-    def __init__(self):
-        self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
-        logging.info("Successfully connected to Graph")
+    def __init__(self, graph):
+        self.graph = graph
         self.subgraph = None
         self.scraper = Reddit()
 

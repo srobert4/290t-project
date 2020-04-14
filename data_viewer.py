@@ -1,23 +1,15 @@
 # data_viewer.py
-# Queries the graph and displays results
+# Queries the graph for content and displays results
 
 import py2neo as pn
 from nodes import Submission, Subreddit, Comment, User, Code
-import configparser
 from termcolor import colored
 
 class Data_Viewer:
     # The data viewer class allows the user to query the database and display results
-    cfg = configparser.ConfigParser()
-    # ==============================
-    # If you move your config file:
-    # change the following line to its chosen location
-    # ==============================
-    cfg.read('/etc/290t-config.txt')
-    cfg = cfg['neo4j']
 
-    def __init__(self):
-        self.graph = pn.Graph(auth=(self.cfg['db'], self.cfg['pw']))
+    def __init__(self, graph):
+        self.graph = graph
         self.rship_matcher = pn.RelationshipMatcher(self.graph)
         self.node_matcher = pn.NodeMatcher(self.graph)
 
