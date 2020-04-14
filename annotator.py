@@ -113,4 +113,4 @@ class Annotator:
         if content_node.__primarylabel__ == "Submission":
             code.submission_excerpts.add(content_node, text = content)
         else:
-            code.comment_excerpts.add(content_node, text = content)
+            code.excerpts.add(content_node, text = content)

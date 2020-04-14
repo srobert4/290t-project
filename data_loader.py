@@ -34,6 +34,17 @@ class Data_Loader:
             self.graph.schema.create_uniqueness_constraint("Comment", "id")
             self.graph.schema.create_uniqueness_constraint("Subreddit", "id")
 
+            logging.info("Adding text indices to graph")
+            self.graph.evaluate(
+                "CALL db.index.fulltext.createNodeIndex(\"contentIndex\",[\"Submission\", \"Comment\"],[\"title\", \"text\"])"
+            )
+            self.graph.evaluate(
+                "CALL db.index.fulltext.createNodeIndex(\"codeIndex\",[\"Code\"],[\"code\"])"
+            )
+            self.graph.evaluate(
+                "CALL db.index.fulltext.createRelationshipIndex(\"excerptIndex\",[\"CODED\"],[\"excerpts\", \"submission_excerpts\"])"
+            )
+
     def clear_graph(self):
         # delete all nodes in the graph
         self.graph.delete_all()

@@ -63,10 +63,10 @@ class Data_Viewer:
         for comments in comm_sub.values():
             content += [str(c) for c in comments]
 
-        result = f"[Content from user: {user_name}]\n"
-        result += "-" * (len(result) - 1) + "\n"
-        result += "\n\n".join(content)
-        return result
+        return self._construct_result_string(
+            f"Content from user: {user_name}",
+            content
+        )
 
     def view_subreddit(self, subreddit_name = "", subreddit_id = None):
         # View all content on a subreddit
@@ -81,26 +81,50 @@ class Data_Viewer:
         content = [self.view_submission(submission = submission, include_comments = True) \
                         for submission in subreddit.posts]
 
-        result = f"[Content on subreddit: r/{subreddit.name}]\n"
-        result += "-" * (len(result) - 1) + "\n"
-        result += "\n\n".join(content)
-        return result
+        return self._construct_result_string(
+            f"Content on subreddit: r/{subreddit.name}",
+            content
+        )
 
     def view_coded(self, code_label):
         # View all content coded with a given code. The code label should be the label
         # of the leaf node
         code = Code.match(self.graph, code_label).first()
+        if not code:
+            print("Code not found")
+            return
 
         content = []
         for content_node in code.excerpts:
             highlight = code.excerpts.get(content_node, "text")
             content += [colored(highlight, "yellow").join(str(content_node).split(highlight))]
 
-        result = f"[Content with code: {code_label}]\n"
-        result += "-" * (len(result) - 1) + "\n"
-        result += "\n\n".join(content)
-        return result
+        return self._construct_result_string(
+            f"Content with code: {code_label}",
+            content
+        )
 
     def view_search(self, query):
         # View content that matches a search term
-        raise NotImplementedError
+        nodes = self.graph.run(
+            f"CALL db.index.fulltext.queryNodes(\"contentIndex\", \"{query}\")"
+        ).to_subgraph()
+
+        content = []
+        for node in nodes.nodes:
+            if node.__primarylabel__ == "Comment":
+                node = Comment.match(self.graph, node["id"]).first()
+            else:
+                node = Submission.match(self.graph, node["id"]).first()
+            content.append(str(node))
+
+        return self._construct_result_string(
+            f"Content matching search term: {query}",
+            content
+        )
+
+    def _construct_result_string(self, title, content):
+        result = f"[{title}]\n"
+        result += "-" * (len(result) - 1) + "\n"
+        result += "\n\n".join(content)
+        return result

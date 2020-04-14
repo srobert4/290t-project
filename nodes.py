@@ -107,12 +107,16 @@ class Comment(GraphObject):
         self.top_level = attrs.get("link_id") == attrs.get("parent_id")
 
     def __str__(self):
-        author = [a for a in self.author][0].name
+        author = [a for a in self.author]
+        if len(author) > 0:
+            author = author[0].name
+        else:
+            author = "(No author)"
 
         if self.top_level:
             ptype = "Submission"
             parent = [p for p in self.parent_submission][0]
-            return f"[Comment {self.id} -> {ptype} {parent.id}] {author}: {self.text}"
+            return f"[Comment {self.id} -> {ptype} {parent.id}] \n{author}: {self.text}"
 
         ptype = "Comment"
         parent = [p for p in self.parent_comment][0]
