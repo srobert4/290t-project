@@ -115,6 +115,11 @@ class Data_Viewer:
             content
         )
 
+    def run_cypher(self, cypher):
+        # Allows the user to execute their own cypher query
+        # Returns: the result of the cypher query converted to a Pandas dataframe
+        return self.graph.run(cypher).to_data_frame()
+
     def _construct_result_string(self, title, content):
         result = f"[{title}]\n"
         result += "-" * (len(result) - 1) + "\n"

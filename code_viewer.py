@@ -48,3 +48,8 @@ class Code_Viewer:
                 labels['parent_codes'].append(str(code))
 
         return pd.DataFrame(data = labels)
+
+    def run_cypher(self, cypher):
+        # Allows the user to execute their own cypher query
+        # Returns: the result of the cypher query converted to a Pandas dataframe
+        return self.graph.run(cypher).to_data_frame()
